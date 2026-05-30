@@ -1,0 +1,2 @@
+# Re-run profile switch whenever AC adapter state changes
+ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="ADP1", RUN+="/usr/bin/systemctl --no-block restart power-profile-auto.service"

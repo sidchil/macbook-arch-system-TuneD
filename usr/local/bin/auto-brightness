@@ -1,0 +1,152 @@
+#!/bin/bash
+# Auto-brightness daemon for MacBook 12-inch
+# Adjusts display brightness based on ambient light sensor readings
+#
+# Uses acpi_call to write brightness via the ACPI _BCM method directly,
+# bypassing the kernel backlight subsystem. This prevents the kernel from
+# emitting a 'change' uevent, which cosmic-settings-daemon would pick up
+# and trigger the COSMIC OSD slider. Manual F1/F2 changes still show the OSD.
+#
+# After brightness stabilises, sysfs is synced once so that F1/F2 reads
+# the correct current brightness level.
+
+set -euo pipefail
+
+SENSOR="/sys/bus/iio/devices/iio:device0/in_illuminance_input"
+BACKLIGHT="/sys/class/backlight/acpi_video0"
+ACTUAL_BRIGHTNESS="$BACKLIGHT/actual_brightness"
+BRIGHTNESS_FILE="$BACKLIGHT/brightness"
+MAX_BRIGHTNESS=$(cat "$BACKLIGHT/max_brightness")
+ACPI_CALL="/proc/acpi/call"
+ACPI_BCM="\\_SB.PCI0.IGPU.DD01._BCM"
+POLL_INTERVAL=0.5
+SYSFS_SYNCED=false
+STABLE_COUNT=0
+STABLE_SYNC_AFTER=10  # Sync sysfs after this many stable cycles (~5 seconds at 0.5s poll)
+
+# Set brightness silently via ACPI _BCM (no uevent, no OSD)
+set_brightness() {
+    local value=$1
+    echo "${ACPI_BCM} 0x$(printf '%x' "$value")" > "$ACPI_CALL"
+}
+
+# Sync sysfs brightness file so F1/F2 reads the correct value.
+# This triggers one brief OSD flash but keeps everything in sync.
+sync_sysfs() {
+    local value=$1
+    local sysfs_val
+    sysfs_val=$(cat "$BRIGHTNESS_FILE" 2>/dev/null) || return
+    if (( sysfs_val != value )); then
+        echo "$value" > "$BRIGHTNESS_FILE"
+    fi
+}
+
+# Lux-to-brightness mapping (lux_threshold:brightness_target)
+# Tuned for max_brightness=90
+lux_to_brightness() {
+    local lux=$1
+    local target
+
+    if   (( lux <= 5 ));   then target=5
+    elif (( lux <= 15 ));  then target=15
+    elif (( lux <= 30 ));  then target=25
+    elif (( lux <= 60 ));  then target=35
+    elif (( lux <= 100 )); then target=45
+    elif (( lux <= 200 )); then target=55
+    elif (( lux <= 400 )); then target=70
+    elif (( lux <= 700 )); then target=80
+    else                        target=$MAX_BRIGHTNESS
+    fi
+
+    echo "$target"
+}
+
+# Verify acpi_call is available
+if [[ ! -f "$ACPI_CALL" ]]; then
+    echo "ERROR: acpi_call module not loaded. Run: sudo modprobe acpi_call" >&2
+    exit 1
+fi
+
+LAST_WRITTEN=-1
+MANUAL_OVERRIDE=false
+OVERRIDE_LUX=0
+LUX_CHANGE_PCT=100  # Resume auto-brightness when lux changes by this percentage
+LUX_CHANGE_MIN=5    # Minimum absolute lux change (for low-light conditions)
+
+# Check if ambient light has changed enough to resume auto-brightness
+lux_changed_enough() {
+    local current_lux=$1
+    local ref_lux=$OVERRIDE_LUX
+    local delta=$(( current_lux - ref_lux ))
+    (( delta < 0 )) && delta=$(( -delta ))
+
+    # Absolute minimum delta for low-light conditions
+    if (( delta >= LUX_CHANGE_MIN )); then
+        # At zero lux, any change above minimum is enough
+        if (( ref_lux == 0 )); then
+            return 0
+        fi
+        # Percentage-based check
+        if (( delta * 100 / ref_lux >= LUX_CHANGE_PCT )); then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+while true; do
+    sleep "$POLL_INTERVAL"
+
+    # Read current values
+    lux=$(cat "$SENSOR" 2>/dev/null) || continue
+    current=$(cat "$ACTUAL_BRIGHTNESS" 2>/dev/null) || continue
+
+    # Detect manual override: actual brightness differs from what we last wrote
+    # This means the user changed brightness via F1/F2 (which goes through sysfs)
+    if (( LAST_WRITTEN >= 0 && current != LAST_WRITTEN )); then
+        MANUAL_OVERRIDE=true
+        OVERRIDE_LUX=$lux
+        LAST_WRITTEN=$current
+        SYSFS_SYNCED=true   # F1/F2 already wrote to sysfs, so it's in sync
+        STABLE_COUNT=0
+        continue
+    fi
+
+    # If in manual override, only resume when lighting conditions change substantially
+    if $MANUAL_OVERRIDE; then
+        if lux_changed_enough "$lux"; then
+            MANUAL_OVERRIDE=false
+        else
+            continue
+        fi
+    fi
+
+    target=$(lux_to_brightness "$lux")
+
+    # At target: sync sysfs after a stable period so F1/F2 reads correct value
+    if (( current == target )); then
+        LAST_WRITTEN=$current
+        if ! $SYSFS_SYNCED; then
+            (( STABLE_COUNT++ )) || true
+            if (( STABLE_COUNT >= STABLE_SYNC_AFTER )); then
+                sync_sysfs "$current"
+                SYSFS_SYNCED=true
+            fi
+        fi
+        continue
+    fi
+
+    # Brightness needs to change — mark sysfs as needing sync
+    SYSFS_SYNCED=false
+    STABLE_COUNT=0
+
+    # Step of 1 at 0.5s polling = smooth imperceptible transitions
+    if (( current < target )); then
+        new=$(( current + 1 ))
+    else
+        new=$(( current - 1 ))
+    fi
+
+    set_brightness "$new"
+    LAST_WRITTEN=$new
+done

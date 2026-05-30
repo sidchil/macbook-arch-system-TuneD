@@ -1,0 +1,12 @@
+[Unit]
+Description=Auto-switch power profile on AC state change
+After=power-profiles-daemon.service
+Wants=power-profiles-daemon.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/power-profile-auto
+
+[Install]
+WantedBy=multi-user.target

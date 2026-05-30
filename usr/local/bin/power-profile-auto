@@ -1,0 +1,12 @@
+#!/bin/bash
+# Auto-switch power-profiles-daemon profile based on AC state.
+# AC online  -> balanced     AC offline -> power-saver
+online=1
+for n in /sys/class/power_supply/ADP*/online /sys/class/power_supply/AC*/online; do
+    [ -r "$n" ] && { online=$(cat "$n"); break; }
+done
+if [ "$online" = "1" ]; then
+    /usr/bin/powerprofilesctl set balanced
+else
+    /usr/bin/powerprofilesctl set power-saver
+fi

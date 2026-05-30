@@ -1,0 +1,15 @@
+# Apple SPI Touchpad palm rejection fix
+# The applespi driver enumerates this clickpad as vendor 0x06CB (Synaptics)
+# product 0x0417, so the upstream [Apple Laptop Touchpad (SPI)] quirk
+# (which requires MatchVendor=0x05AC) never matches and palm rejection
+# stays disabled -> stray palm contacts while typing move the text caret.
+# Reuse the upstream Apple SPI tuning since it is the same physical hardware.
+[Apple SPI Touchpad (applespi 06cb:0417)]
+MatchUdevType=touchpad
+MatchBus=spi
+MatchVendor=0x06CB
+MatchProduct=0x0417
+AttrSizeHint=104x75
+AttrTouchSizeRange=150:130
+AttrPalmSizeThreshold=1600
+ModelAppleTouchpad=1
