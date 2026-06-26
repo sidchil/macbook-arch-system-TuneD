@@ -34,7 +34,7 @@ spurious OSD popups). Requires the `acpi_call` module.
 
 ```sh
 git clone https://github.com/sidchil/macbook-arch-system-TuneD
-cd macbook-arch-system
+cd macbook-arch-system-TuneD
 sudo ./install.sh
 ```
 
