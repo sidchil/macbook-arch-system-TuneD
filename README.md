@@ -33,7 +33,7 @@ spurious OSD popups). Requires the `acpi_call` module.
 ## Install
 
 ```sh
-git clone [https://github.com/juicecultus/macbook-arch-system](https://github.com/sidchil/macbook-arch-system-TuneD)
+git clone https://github.com/sidchil/macbook-arch-system-TuneD
 cd macbook-arch-system
 sudo ./install.sh
 ```
