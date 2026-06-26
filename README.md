@@ -1,4 +1,7 @@
-# macbook-arch-system
+# macbook-arch-system-TuneD
+
+Fork of juicecultus' "macbook-arch-system" that is for systems using TuneD instead
+of power-profiles-daemon.
 
 System-level (`/etc`, `/usr/local`) tweaks for running Arch Linux on a
 **MacBook10,1** (12-inch 2017). These are hardware fixes, separate from the
