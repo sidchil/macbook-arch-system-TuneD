@@ -6,7 +6,7 @@ for n in /sys/class/power_supply/ADP*/online /sys/class/power_supply/AC*/online;
     [ -r "$n" ] && { online=$(cat "$n"); break; }
 done
 if [ "$online" = "1" ]; then
-    /usr/bin/powerprofilesctl set balanced
+    /usr/bin/tuned-adm profile throughput-performance
 else
-    /usr/bin/powerprofilesctl set power-saver
+    /usr/bin/tuned-adm profile powersave
 fi
