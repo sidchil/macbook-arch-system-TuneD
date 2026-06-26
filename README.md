@@ -1,6 +1,6 @@
 # macbook-arch-system-TuneD
 
-Fork of juicecultus' "macbook-arch-system" that is for Arch Linux systems using
+Fork of juicecultus' "macbook-arch-system," created for Arch Linux systems using
 TuneD instead of power-profiles-daemon. All credit goes to juicecultus for
 creating the vast majority of this tweak.
 
