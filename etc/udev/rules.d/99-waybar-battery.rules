@@ -1,0 +1,4 @@
+# Poke waybar to refresh its custom/battery module the instant the AC
+# adapter or battery state changes (signal 8 = SIGRTMIN+8, matches the
+# "signal": 8 in ~/.config/waybar/config.jsonc custom/battery module).
+ACTION=="change", SUBSYSTEM=="power_supply", RUN+="/usr/bin/pkill --signal RTMIN+8 -x waybar"
