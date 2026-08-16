@@ -7,6 +7,7 @@ cd "$(dirname "$0")"
 install -Dm644 etc/libinput/local-overrides.quirks          /etc/libinput/local-overrides.quirks
 install -Dm644 etc/systemd/system/power-profile-auto.service /etc/systemd/system/power-profile-auto.service
 install -Dm644 etc/udev/rules.d/99-power-profile-auto.rules  /etc/udev/rules.d/99-power-profile-auto.rules
+install -Dm644 etc/udev/rules.d/99-waybar-battery.rules      /etc/udev/rules.d/99-waybar-battery.rules
 install -Dm755 usr/local/bin/power-profile-auto             /usr/local/bin/power-profile-auto
 install -Dm755 usr/local/bin/auto-brightness               /usr/local/bin/auto-brightness
 
